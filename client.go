@@ -3,9 +3,11 @@ package apns
 import (
 	"crypto/tls"
 	"errors"
-	"net"
 	"strings"
 	"time"
+
+	"appengine"
+	"appengine/socket"
 )
 
 var _ APNSClient = &Client{}
@@ -32,6 +34,7 @@ type Client struct {
 	CertificateBase64 string
 	KeyFile           string
 	KeyBase64         string
+	Context						appengine.Context
 }
 
 // BareClient can be used to set the contents of your
@@ -46,8 +49,9 @@ func BareClient(gateway, certificateBase64, keyBase64 string) (c *Client) {
 
 // NewClient assumes you'll be passing in paths that
 // point to your certificate and key.
-func NewClient(gateway, certificateFile, keyFile string) (c *Client) {
+func NewClient(context appengine.Context, gateway string, certificateFile string, keyFile string) (c *Client) {
 	c = new(Client)
+	c.Context = context
 	c.Gateway = gateway
 	c.CertificateFile = certificateFile
 	c.KeyFile = keyFile
@@ -111,7 +115,7 @@ func (client *Client) ConnectAndWrite(resp *PushNotificationResponse, payload []
 		ServerName:   gatewayParts[0],
 	}
 
-	conn, err := net.Dial("tcp", client.Gateway)
+	conn, err := socket.Dial(client.Context, "tcp", client.Gateway)
 	if err != nil {
 		return err
 	}
